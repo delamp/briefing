@@ -449,6 +449,7 @@
     feedback: 'Less news on Mondays…',
   };
   let mode = 'auto';
+  let homeMode = 'auto'; // the mode it returns to after adding ('work' when opened from the Work link)
   const text = $('text');
   const dateInput = $('date');
   function setMode(m) {
@@ -473,7 +474,7 @@
     const params = { action: 'add', text: value, mode };
     if (dateInput.value && (mode === 'remind' || mode === 'due' || mode === 'location' || mode === 'work')) params.date = dateInput.value;
     api(params).then((r) => {
-      text.value = ''; text.style.height = ''; dateInput.value = ''; setMode('auto');
+      text.value = ''; text.style.height = ''; dateInput.value = ''; setMode(homeMode);
       buzz([10, 40, 10]);
       const a = r.added || {};
       const where = a.mode === 'work' ? (a.date ? 'Work, due ' + prettyDate(a.date) : 'Work, next weekday show') : a.mode === 'explore' ? 'Look into, next show' : a.mode === 'feedback' ? 'Show feedback' :
@@ -525,6 +526,16 @@
     text.value = shared; text.dispatchEvent(new Event('input'));
     setMode('explore');
     hint('Shared in. It’s set to Look into; pick another type if you like.');
+    history.replaceState(null, '', location.pathname);
+  })();
+
+  // ---- Opened from the Work link or the long-press "Add work item" shortcut: ./?mode=work ----
+  (function openOnMode() {
+    const m = new URLSearchParams(location.search).get('mode');
+    if (!m || !HINTS[m] || text.value) return;
+    homeMode = m;
+    setMode(m);
+    if (m === 'work') setTimeout(() => text.focus(), 300);
     history.replaceState(null, '', location.pathname);
   })();
 
