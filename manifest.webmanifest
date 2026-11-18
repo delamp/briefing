@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Morning Briefing",
   "short_name": "Briefing",
-  "description": "Add things to B Cook's Morning Briefing and play the latest episode.",
+  "description": "Add things to your Morning Briefing and play the latest episode.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,6 +1,6 @@
 // Offline helper for the Morning Briefing app. It only keeps a copy of the app itself so it opens
 // without a connection; the inbox and episodes always come live from the Apps Script web app.
-const CACHE = 'briefing-v1';
+const CACHE = 'briefing-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './cover-small.jpg'];
 
 self.addEventListener('install', (event) => {
