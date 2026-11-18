@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Briefing">
+  <meta name="theme-color" content="#FAF5EC" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#17120F" media="(prefers-color-scheme: dark)">
+  <meta name="robots" content="noindex">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Morning Briefing</title>
+  <!--
+    Morning Briefing inbox: B Cook's installable phone app for his private morning podcast.
+    Data lives in Google Tasks ("Morning Briefing Inbox") behind the Morning Briefing Apps Script web app.
+    The secret key is NOT in this file: it comes from the link after "#k=" and is remembered on this phone only.
+  -->
+  <style>
+    :root {
+      --bg: #FAF5EC; --bg2: #F3EADB; --card: #FFFDF9; --ink: #2E2019; --ink2: #6B5747; --muted: #A08B78; --line: #EADFCD;
+      --sun: #F3CF6A; --sun-soft: #FBEFC8; --sun-deep: #C9971F; --berry: #8C3A4B; --berry-soft: #F4DFE2; --sky: #5D7BA8; --sky-soft: #E1E8F3;
+      --cocoa: #3B2A20; --ok: #3E8E5E; --shadow: 0 1px 2px rgba(46,32,25,.05), 0 10px 28px rgba(46,32,25,.08);
+      --r: 22px; --hand: "Kalam", "Comic Sans MS", cursive; --sans: "Inter", -apple-system, Roboto, "Segoe UI", sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #17120F; --bg2: #211A15; --card: #241C17; --ink: #F7EEE2; --ink2: #D2C1AE; --muted: #9A8674; --line: #382B22;
+        --sun: #F3CF6A; --sun-soft: #3A2F16; --sun-deep: #F3CF6A; --berry: #E0899A; --berry-soft: #3C2027; --sky: #9DB4D8; --sky-soft: #1F2836;
+        --cocoa: #0E0A08; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+      }
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { background: var(--bg); }
+    body { margin: 0; color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+    button, input, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    [hidden] { display: none !important; }
+    .wrap { max-width: 560px; margin: 0 auto; padding: 0 16px calc(40px + env(safe-area-inset-bottom)); }
+
+    header.top { display: flex; align-items: center; gap: 12px; padding: calc(14px + env(safe-area-inset-top)) 2px 4px; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; object-position: 50% 18%; border: 2px solid var(--sun); background: var(--sun-soft); flex: none; }
+    .brand { font-family: var(--hand); font-size: 25px; line-height: 1; letter-spacing: .01em; }
+    .brand small { display: block; font-family: var(--sans); font-size: 12.5px; font-weight: 600; color: var(--muted); letter-spacing: .02em; margin-top: 3px; }
+
+    /* Latest episode */
+    .episode { position: relative; margin: 16px 0 18px; border-radius: 26px; overflow: hidden; padding: 20px 20px 18px; color: #2E2019;
+               background: radial-gradient(120% 90% at 85% 120%, #F6D883 0%, #F3CF6A 35%, #F7E3A6 70%, #FBF0CF 100%); box-shadow: var(--shadow); }
+    .episode::after { content: ""; position: absolute; right: -40px; bottom: -70px; width: 220px; height: 220px; border-radius: 50%;
+                      background: radial-gradient(circle, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 70%); pointer-events: none; }
+    .kicker { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; opacity: .65; margin: 0 0 6px; }
+    .episode h1 { font-family: var(--hand); font-weight: 700; font-size: 27px; line-height: 1.15; margin: 0 0 14px; position: relative; z-index: 1; }
+    .player { display: flex; align-items: center; gap: 14px; position: relative; z-index: 1; }
+    .play { width: 58px; height: 58px; border-radius: 50%; border: 0; background: #3B2A20; color: #FBEFC8; display: grid; place-items: center; flex: none;
+            box-shadow: 0 6px 16px rgba(59,42,32,.28); transition: transform .15s; }
+    .play:active { transform: scale(.94); }
+    .play svg { width: 24px; height: 24px; }
+    .track { flex: 1; min-width: 0; }
+    .bar { position: relative; height: 6px; border-radius: 6px; background: rgba(59,42,32,.16); overflow: hidden; cursor: pointer; }
+    .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #8C3A4B; border-radius: 6px; }
+    .times { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; opacity: .7; margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .skip { border: 0; background: rgba(59,42,32,.1); color: #3B2A20; border-radius: 999px; height: 34px; padding: 0 11px; font-size: 13px; font-weight: 700; flex: none; }
+    .notes-toggle { margin-top: 14px; border: 0; background: none; padding: 0; font-size: 13.5px; font-weight: 700; color: #6E2C3A; position: relative; z-index: 1; }
+    .notes { margin: 8px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.45; position: relative; z-index: 1; }
+    .notes li { margin: 3px 0; }
+    .episode.empty h1 { margin-bottom: 4px; }
+    .episode.empty p { margin: 0; opacity: .75; font-size: 14.5px; }
+
+    /* Composer */
+    .composer { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 16px; }
+    .composer .lead { display: block; font-family: var(--hand); font-size: 21px; margin: 0 2px 10px; }
+    textarea { width: 100%; min-height: 92px; resize: none; border: 0; outline: 0; background: var(--bg2); border-radius: 16px;
+               padding: 14px 16px; font-size: 17px; line-height: 1.45; transition: box-shadow .2s, background .2s; }
+    textarea:focus { box-shadow: 0 0 0 2px var(--sun-deep); background: transparent; }
+    textarea::placeholder { color: var(--muted); }
+    .modes { display: flex; gap: 8px; overflow-x: auto; margin: 12px -16px 0; padding: 2px 16px 4px; scrollbar-width: none; }
+    .modes::-webkit-scrollbar { display: none; }
+    .chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line);
+            background: transparent; font-size: 14px; font-weight: 600; color: var(--ink2); white-space: nowrap; transition: all .16s; }
+    .chip svg { width: 16px; height: 16px; }
+    .chip[aria-pressed="true"] { background: var(--cocoa); border-color: var(--cocoa); color: #FBEFC8; }
+    @media (prefers-color-scheme: dark) { .chip[aria-pressed="true"] { background: var(--sun); border-color: var(--sun); color: #241A10; } }
+    .daterow { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .datechip { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px; border-radius: 12px; background: var(--sun-soft);
+                border: 1px solid var(--sun); font-size: 14.5px; font-weight: 600; }
+    .datechip svg { width: 16px; height: 16px; }
+    .datechip input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+    .hint { font-size: 13px; color: var(--muted); margin: 10px 4px 0; line-height: 1.4; }
+    .hint.err { color: var(--berry); }
+    .actions { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+    .mic { position: relative; width: 56px; height: 56px; flex: none; border: 0; border-radius: 50%; background: var(--sun-soft); color: var(--sun-deep);
+           display: grid; place-items: center; transition: transform .15s, background .2s, color .2s; }
+    @media (prefers-color-scheme: dark) { .mic { color: var(--sun); } }
+    .mic svg { width: 24px; height: 24px; }
+    .mic:active { transform: scale(.94); }
+    .mic.on { background: var(--berry); color: #fff; }
+    .mic.on::before, .mic.on::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--berry); animation: ring 1.6s ease-out infinite; }
+    .mic.on::after { animation-delay: .8s; }
+    @keyframes ring { from { transform: scale(1); opacity: .7; } to { transform: scale(1.7); opacity: 0; } }
+    .send { flex: 1; height: 56px; border: 0; border-radius: 18px; background: var(--cocoa); color: #FBEFC8; font-weight: 700; font-size: 16px;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform .15s, opacity .2s; }
+    @media (prefers-color-scheme: dark) { .send { background: var(--sun); color: #241A10; } }
+    .send:active { transform: scale(.98); }
+    .send:disabled { opacity: .55; }
+    .send svg { width: 18px; height: 18px; }
+
+    /* Lists */
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 28px 4px 12px; }
+    .section-head h2 { font-family: var(--hand); font-size: 23px; margin: 0; }
+    .section-head span { font-size: 13px; color: var(--muted); font-weight: 500; }
+    ul.items { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    li.item { display: flex; gap: 12px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+              padding: 14px; transition: opacity .35s, transform .35s; animation: rise .3s ease both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    li.item .ico { width: 36px; height: 36px; border-radius: 12px; flex: none; display: grid; place-items: center; background: var(--bg2); color: var(--ink2); }
+    li.item .ico svg { width: 18px; height: 18px; }
+    li.item.m-explore .ico { background: var(--sky-soft); color: var(--sky); }
+    li.item.m-feedback .ico { background: var(--berry-soft); color: var(--berry); }
+    li.item.m-location .ico { background: var(--sky-soft); color: var(--sky); }
+    li.item.m-due .ico, li.item.m-remind .ico { background: var(--sun-soft); color: var(--sun-deep); }
+    li.item.leaving { opacity: 0; transform: translateX(24px); }
+    li.item.checked .title { text-decoration: line-through; color: var(--muted); }
+    .body { flex: 1; min-width: 0; }
+    .title { font-size: 16px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+    .meta { font-size: 12.5px; font-weight: 600; color: var(--muted); margin-top: 5px; }
+    .done { flex: none; border: 1px solid var(--line); background: transparent; border-radius: 12px; height: 36px; padding: 0 12px; font-size: 13.5px; font-weight: 600; color: var(--ink2); }
+    li.checked .done { background: var(--ok); border-color: var(--ok); color: #fff; }
+    .empty { text-align: center; padding: 22px 20px 6px; color: var(--ink2); font-size: 14.5px; }
+    .empty b { display: block; font-family: var(--hand); font-size: 20px; color: var(--ink); margin-bottom: 2px; }
+    .skeleton { height: 66px; border-radius: 18px; background: linear-gradient(90deg, var(--bg2) 0%, var(--card) 50%, var(--bg2) 100%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+    @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+    .foot { margin: 28px 4px 0; padding: 16px 18px; border-radius: 18px; background: var(--bg2); color: var(--ink2); font-size: 13.5px; line-height: 1.5; }
+    .foot strong { color: var(--ink); }
+    .foot button { margin-top: 10px; border: 1px solid var(--line); background: var(--card); border-radius: 12px; height: 38px; padding: 0 14px; font-size: 13.5px; font-weight: 600; }
+
+    .setup { margin-top: 24px; }
+
+    .toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+             display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px); background: var(--cocoa); color: #FBEFC8;
+             padding: 12px 14px 12px 18px; border-radius: 16px; font-size: 14.5px; font-weight: 500; box-shadow: 0 12px 30px rgba(0,0,0,.25);
+             transition: all .28s cubic-bezier(.2,.9,.3,1.2); z-index: 10; }
+    @media (prefers-color-scheme: dark) { .toast { background: #F7EEE2; color: #241A10; } }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+    .toast button { border: 0; background: transparent; color: var(--sun); font-weight: 700; padding: 4px 6px; }
+    @media (prefers-color-scheme: dark) { .toast button { color: var(--berry); } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><g fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1.4"/><rect x="13.5" y="5" width="4" height="14" rx="1.4"/></g></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 10.5a7 7 0 0 0 14 0M12 17.5v4"/></g></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2.5" fill="currentColor"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></g></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 6v2.5M5.6 9.6l1.7 1.7M18.4 9.6l-1.7 1.7"/></g></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></g></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></g></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></g></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 5.5h15v10h-8l-4.5 3.5v-3.5h-2.5z"/></g></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="top">
+    <img class="avatar" src="cover-small.jpg" alt="">
+    <div class="brand">Morning Briefing<small id="hello">Good morning, B</small></div>
+  </header>
+
+  <section class="setup composer" id="setup" hidden>
+    <span class="lead">One more step</span>
+    <p style="margin:0;color:var(--ink2)">Open your private Briefing app link (the one that ends in <code>#k=…</code>) once on this phone. It's remembered after that.</p>
+  </section>
+
+  <main id="app">
+    <section class="episode" id="episode" aria-label="Latest episode">
+      <p class="kicker" id="epKicker">Latest episode</p>
+      <h1 id="epTitle">Loading…</h1>
+      <div class="player" id="player" hidden>
+        <button class="play" id="play" type="button" aria-label="Play"><svg id="playIcon"><use href="#i-play"/></svg></button>
+        <div class="track">
+          <div class="bar" id="bar"><i id="barFill"></i></div>
+          <div class="times"><span id="tNow">0:00</span><span id="tLen">0:00</span></div>
+        </div>
+        <button class="skip" id="back" type="button" aria-label="Back 15 seconds">−15</button>
+        <button class="skip" id="fwd" type="button" aria-label="Forward 30 seconds">+30</button>
+      </div>
+      <button class="notes-toggle" id="notesToggle" type="button" hidden>Show notes ▾</button>
+      <ul class="notes" id="notes" hidden></ul>
+      <audio id="audio" preload="none"></audio>
+    </section>
+
+    <section class="composer" aria-label="Add to the briefing">
+      <label class="lead" for="text">Add to the briefing</label>
+      <textarea id="text" rows="3" placeholder="Car registration is due Dec 3…" enterkeyhint="done"></textarea>
+      <div class="modes" id="modes" role="group" aria-label="When it should come up">
+        <button class="chip" data-mode="auto" aria-pressed="true" type="button"><svg><use href="#i-spark"/></svg>Auto</button>
+        <button class="chip" data-mode="next" aria-pressed="false" type="button"><svg><use href="#i-sun"/></svg>Next show</button>
+        <button class="chip" data-mode="remind" aria-pressed="false" type="button"><svg><use href="#i-bell"/></svg>Remind me</button>
+        <button class="chip" data-mode="due" aria-pressed="false" type="button"><svg><use href="#i-cal"/></svg>Due date</button>
+        <button class="chip" data-mode="explore" aria-pressed="false" type="button"><svg><use href="#i-search"/></svg>Look into</button>
+        <button class="chip" data-mode="location" aria-pressed="false" type="button"><svg><use href="#i-pin"/></svg>I'm away</button>
+        <button class="chip" data-mode="feedback" aria-pressed="false" type="button"><svg><use href="#i-chat"/></svg>Show feedback</button>
+      </div>
+      <div class="daterow" id="dateRow" hidden>
+        <label class="datechip"><svg><use href="#i-cal"/></svg><span id="dateLabel">Pick a date</span><input type="date" id="date"></label>
+      </div>
+      <p class="hint" id="hint"></p>
+      <div class="actions">
+        <button class="mic" id="mic" type="button" aria-label="Speak it"><svg id="micIcon"><use href="#i-mic"/></svg></button>
+        <button class="send" id="add" type="button"><span id="addLabel">Add to briefing</span><svg><use href="#i-send"/></svg></button>
+      </div>
+    </section>
+
+    <div class="section-head"><h2>Waiting for the show</h2><span id="sub"></span></div>
+    <ul class="items" id="items"><li class="skeleton"></li><li class="skeleton"></li></ul>
+
+    <div class="section-head" id="standingHead" hidden><h2>Standing notes</h2><span>Until you remove them</span></div>
+    <ul class="items" id="standing"></ul>
+
+    <div class="foot">
+      <strong>When it runs:</strong> the show is ready around 6:30 AM on weekdays and 8:30 AM on weekends. Add things before 6 AM (8 AM on Saturday and Sunday) to make the next one.
+      <br><button id="copyFeed" type="button">Copy podcast feed link</button>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastBtn" type="button" hidden>Undo</button></div>
+
+<script>
+  // The Morning Briefing web app (Google Apps Script). Useless without the key.
+  const API = 'https://script.google.com/macros/s/AKfycbyq4kzNjaUqJTkZN7POLOlyhxYAGpNAWNnLbJjM7HO57_yqSUbbXEyx4cEtPff0r7dN/exec';
+
+  // Key comes from "#k=..." in the link (never sent to GitHub's servers), then is remembered on this phone.
+  function readKey() {
+    const fromHash = new URLSearchParams(location.hash.slice(1)).get('k');
+    try {
+      if (fromHash) localStorage.setItem('briefingKey', fromHash);
+      return fromHash || localStorage.getItem('briefingKey');
+    } catch (e) { return fromHash; }
+  }
+  const KEY = readKey();
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search); // keep the key out of the address bar
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+  const buzz = (ms) => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+  function greet() {
+    const h = new Date().getHours();
+    $('hello').textContent = (h < 5 ? 'Up late, B' : h < 12 ? 'Good morning, B' : h < 17 ? 'Good afternoon, B' : 'Good evening, B');
+  }
+  greet();
+
+  // ---- Toast ----
+  let toastTimer = null;
+  function toast(msg, actionLabel, onAction, ms) {
+    $('toastMsg').textContent = msg;
+    const b = $('toastBtn');
+    b.hidden = !actionLabel; b.textContent = actionLabel || '';
+    b.onclick = () => { hideToast(); onAction && onAction(); };
+    $('toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, ms || 2800);
+  }
+  function hideToast() { $('toast').classList.remove('show'); }
+
+  // ---- API: one request at a time so quick taps land in order ----
+  let queue = Promise.resolve();
+  function api(params) {
+    const q = new URLSearchParams(Object.assign({ k: KEY }, params));
+    const run = () => fetch(API + '?' + q.toString(), { redirect: 'follow' })
+      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then((t) => {
+        if (t.trim() === 'Not authorized') throw new Error('auth');
+        const r = JSON.parse(t);
+        if (!r.ok) throw new Error(r.error || 'Something went wrong.');
+        return r;
+      });
+    const p = queue.then(run, run);
+    queue = p.catch(() => {});
+    return p;
+  }
+  function errText(e) {
+    if (e && e.message === 'auth') return 'That link’s key is off. Open your full Briefing link again.';
+    if (e && /HTTP|fetch|NetworkError|Load failed|JSON/i.test(e.message)) return "Can't reach the briefing right now. Check your connection.";
+    return (e && e.message) || "Can't reach the briefing right now.";
+  }
+
+  // ---- Latest episode + player ----
+  const audio = $('audio');
+  const fmt = (s) => { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); };
+  function showEpisode(ep) {
+    const box = $('episode');
+    if (!ep) {
+      box.classList.add('empty');
+      $('epTitle').textContent = 'No episode yet';
+      $('epKicker').textContent = 'Latest episode';
+      return;
+    }
+    box.classList.remove('empty');
+    $('epTitle').textContent = ep.title || 'Morning Briefing';
+    if (ep.date) {
+      const p = ep.date.split('-').map(Number);
+      const d = new Date(p[0], p[1] - 1, p[2]);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const days = Math.round((today - d) / 86400000);
+      $('epKicker').textContent = days === 0 ? "Today's episode" : days === 1 ? "Yesterday's episode" :
+        d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    }
+    $('tLen').textContent = fmt(ep.seconds);
+    $('player').hidden = false;
+    if (audio.dataset.src !== ep.url) {
+      audio.dataset.src = ep.url;
+      audio.src = ep.url;
+      const saved = Number(localStorage.getItem('pos:' + ep.url) || 0);
+      if (saved) { audio.dataset.resume = saved; $('tNow').textContent = fmt(saved); setBar(saved, ep.seconds); }
+    }
+    const notes = ep.notes || [];
+    $('notesToggle').hidden = !notes.length;
+    $('notes').innerHTML = notes.map((n) => '<li>' + esc(n) + '</li>').join('');
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: ep.title || 'Morning Briefing', artist: 'Morning Briefing',
+        artwork: [{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] });
+    }
+  }
+  function setBar(t, len) { $('barFill').style.width = (len ? Math.min(100, t / len * 100) : 0) + '%'; }
+  function playIcon(id) { $('playIcon').innerHTML = '<use href="#' + id + '"/>'; }
+  $('play').onclick = () => {
+    if (audio.paused) {
+      if (audio.dataset.resume) { try { audio.currentTime = Number(audio.dataset.resume); } catch (e) {} delete audio.dataset.resume; }
+      audio.play().catch(() => toast("Couldn't start playback. Try again."));
+    } else audio.pause();
+  };
+  audio.addEventListener('play', () => { playIcon('i-pause'); $('play').setAttribute('aria-label', 'Pause'); });
+  audio.addEventListener('pause', () => { playIcon('i-play'); $('play').setAttribute('aria-label', 'Play'); });
+  audio.addEventListener('waiting', () => { $('tNow').textContent = 'Loading…'; });
+  audio.addEventListener('timeupdate', () => {
+    const len = audio.duration || 0;
+    $('tNow').textContent = fmt(audio.currentTime);
+    if (len && isFinite(len)) $('tLen').textContent = fmt(len);
+    setBar(audio.currentTime, len);
+    try { localStorage.setItem('pos:' + audio.dataset.src, String(Math.floor(audio.currentTime))); } catch (e) {}
+  });
+  audio.addEventListener('ended', () => { try { localStorage.removeItem('pos:' + audio.dataset.src); } catch (e) {} });
+  $('bar').onclick = (e) => {
+    const len = audio.duration; if (!len || !isFinite(len)) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    audio.currentTime = len * Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  };
+  $('back').onclick = () => { audio.currentTime = Math.max(0, audio.currentTime - 15); };
+  $('fwd').onclick = () => { audio.currentTime = Math.min(audio.duration || 1e9, audio.currentTime + 30); };
+  $('notesToggle').onclick = () => {
+    const n = $('notes'); n.hidden = !n.hidden;
+    $('notesToggle').textContent = n.hidden ? 'Show notes ▾' : 'Hide notes ▴';
+  };
+
+  // ---- Items ----
+  const MODE = {
+    next:     { icon: 'i-sun',    meta: () => 'Next show' },
+    remind:   { icon: 'i-bell',   meta: (it) => 'Reminder · ' + it.date },
+    due:      { icon: 'i-cal',    meta: (it) => 'Due ' + it.date + ' · in “coming up” until done' },
+    explore:  { icon: 'i-search', meta: () => 'Look into · researched for the next show' },
+    location: { icon: 'i-pin',    meta: (it) => it.date ? 'Away · weather from here through ' + it.date : 'Away · next show only' },
+    feedback: { icon: 'i-chat',   meta: () => 'Show feedback · every episode' },
+  };
+  let items = [];
+  const pending = new Map();
+
+  function itemHtml(it) {
+    const m = MODE[it.mode] || MODE.next;
+    return '<li class="item m-' + esc(it.mode) + (pending.has(it.id) ? ' checked' : '') + '" data-id="' + esc(it.id) + '">' +
+      '<span class="ico"><svg><use href="#' + m.icon + '"/></svg></span>' +
+      '<div class="body"><div class="title">' + esc(it.title) + '</div><div class="meta">' + esc(m.meta(it)) + '</div></div>' +
+      '<button class="done" type="button">' + (it.mode === 'feedback' || it.mode === 'location' ? 'Remove' : 'Done') + '</button></li>';
+  }
+  function render() {
+    const visible = items.filter((it) => !it._gone);
+    const queued = visible.filter((it) => it.mode !== 'feedback' && it.mode !== 'location');
+    const standing = visible.filter((it) => it.mode === 'feedback' || it.mode === 'location');
+    $('sub').textContent = queued.length ? queued.length + (queued.length === 1 ? ' item' : ' items') : '';
+    $('items').innerHTML = queued.length ? queued.map(itemHtml).join('')
+      : '<li class="empty"><b>Nothing queued</b>Say something and it’ll be on the next show.</li>';
+    $('standingHead').hidden = !standing.length;
+    $('standing').innerHTML = standing.map(itemHtml).join('');
+    document.querySelectorAll('li.item').forEach((li) => {
+      li.querySelector('.done').onclick = () => toggleDone(li.getAttribute('data-id'), li);
+    });
+  }
+  function setItems(list) { items = list || []; render(); }
+
+  function toggleDone(id, li) {
+    if (pending.has(id)) { clearTimeout(pending.get(id)); pending.delete(id); li.classList.remove('checked'); hideToast(); return; }
+    buzz(12);
+    li.classList.add('checked');
+    const it = items.find((x) => x.id === id);
+    const timer = setTimeout(() => commitDone(id, li), 3500);
+    pending.set(id, timer);
+    toast('“' + (it ? it.title : 'Item') + '” cleared.', 'Undo', () => { clearTimeout(timer); pending.delete(id); li.classList.remove('checked'); }, 3400);
+  }
+  function commitDone(id, li) {
+    pending.delete(id);
+    li.classList.add('leaving');
+    const it = items.find((x) => x.id === id); if (it) it._gone = true;
+    setTimeout(render, 350);
+    api({ action: 'done', id }).then((r) => { if (!pending.size) setItems(r.items); })
+      .catch((e) => { if (it) it._gone = false; render(); toast(errText(e)); });
+  }
+
+  let feedUrl = '';
+  function refresh() {
+    if (pending.size) return;
+    return api({ action: 'list' }).then((r) => { setItems(r.items); showEpisode(r.latest); })
+      .catch((e) => {
+        if (!items.length) $('items').innerHTML = '<li class="empty"><b>Can’t reach the briefing</b>' + esc(errText(e)) + '</li>';
+        else toast(errText(e));
+        if ($('epTitle').textContent === 'Loading…') $('epTitle').textContent = 'Offline';
+      });
+  }
+
+  // ---- Composer ----
+  const HINTS = {
+    auto: 'Auto: just say it. Claude works out when it should come up.',
+    next: 'Mentioned on the next show, then cleared.',
+    remind: 'Mentioned on the day you pick, then cleared.',
+    due: 'In “coming up” for the week before, until you clear it.',
+    explore: 'Researched overnight and explained in Curiosity Corner.',
+    location: 'Where you are (“Chicago, Illinois”) and your last day there. Weather comes from there until then.',
+    feedback: 'A standing request about the show itself (“less news”, “stop mentioning the dentist”). Applies every episode until removed.',
+  };
+  const PLACEHOLDER = {
+    auto: 'Car registration is due Dec 3…', next: 'Mention that the plumber comes Thursday…', remind: 'Bring the forms…',
+    due: 'Renew passport…', explore: 'That book Marcus mentioned, Thinking in Systems…', location: 'Chicago, Illinois',
+    feedback: 'Less news on Mondays…',
+  };
+  let mode = 'auto';
+  const text = $('text');
+  const dateInput = $('date');
+  function setMode(m) {
+    mode = m;
+    document.querySelectorAll('#modes .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.mode === m)));
+    $('dateRow').hidden = !(m === 'remind' || m === 'due' || m === 'location');
+    $('dateLabel').textContent = dateInput.value ? prettyDate(dateInput.value) : (m === 'location' ? 'Last day there' : 'Pick a date');
+    $('hint').textContent = HINTS[m]; $('hint').classList.remove('err');
+    text.placeholder = PLACEHOLDER[m];
+  }
+  document.querySelectorAll('#modes .chip').forEach((c) => { c.onclick = () => { buzz(6); setMode(c.dataset.mode); }; });
+  function prettyDate(v) { const p = v.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); }
+  dateInput.onchange = () => setMode(mode);
+  text.addEventListener('input', () => { text.style.height = 'auto'; text.style.height = Math.max(92, text.scrollHeight) + 'px'; });
+
+  $('add').onclick = () => {
+    const value = text.value.trim();
+    if (!value) { text.focus(); toast('Say it or type it first.'); return; }
+    if ((mode === 'remind' || mode === 'due') && !dateInput.value) { toast('Pick a date first.'); return; }
+    const btn = $('add');
+    btn.disabled = true; $('addLabel').textContent = mode === 'auto' ? 'Figuring it out…' : 'Adding…';
+    const params = { action: 'add', text: value, mode };
+    if (dateInput.value && (mode === 'remind' || mode === 'due' || mode === 'location')) params.date = dateInput.value;
+    api(params).then((r) => {
+      text.value = ''; text.style.height = ''; dateInput.value = ''; setMode('auto');
+      buzz([10, 40, 10]);
+      const a = r.added || {};
+      const where = a.mode === 'explore' ? 'Look into, next show' : a.mode === 'feedback' ? 'Show feedback' :
+        a.mode === 'location' ? (a.date ? 'Away until ' + prettyDate(a.date) : 'Away, next show') :
+        a.mode === 'remind' ? 'Reminder ' + prettyDate(a.date) : a.mode === 'due' ? 'Due ' + prettyDate(a.date) : 'Next show';
+      toast('Added: ' + (a.title || value) + ' (' + where + ')', null, null, 3400);
+      setItems(r.items);
+    }).catch((e) => toast(errText(e)))
+      .then(() => { btn.disabled = false; $('addLabel').textContent = 'Add to briefing'; });
+  };
+
+  // ---- Voice ----
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const mic = $('mic');
+  let listening = null;
+  function hint(msg, isErr) { $('hint').textContent = msg; $('hint').classList.toggle('err', !!isErr); }
+  function micIcon(id) { $('micIcon').innerHTML = '<use href="#' + id + '"/>'; }
+  mic.onclick = () => {
+    if (listening) { listening.stop(); return; }
+    if (!Recognition) { hint("This phone can't listen here. Tap the box and use your keyboard's mic.", true); text.focus(); return; }
+    const rec = new Recognition();
+    rec.lang = navigator.language || 'en-US';
+    rec.interimResults = true;
+    const before = text.value.trim();
+    rec.onstart = () => { listening = rec; mic.classList.add('on'); micIcon('i-stop'); hint('Listening… go ahead.'); buzz(10); };
+    rec.onend = () => { listening = null; mic.classList.remove('on'); micIcon('i-mic'); };
+    rec.onerror = (e) => {
+      if (e.error === 'no-speech' || e.error === 'aborted') { hint("Didn't catch anything. Tap the mic and try again."); return; }
+      hint(e.error === 'not-allowed' || e.error === 'service-not-allowed'
+        ? 'The mic is blocked for this app. Allow it in your phone settings, or use the keyboard mic.' : "Didn't catch that. Try again.", true);
+    };
+    rec.onresult = (e) => {
+      let said = '';
+      for (let i = 0; i < e.results.length; i++) said += e.results[i][0].transcript;
+      said = said.trim();
+      if (said) said = said.charAt(0).toUpperCase() + said.slice(1);
+      text.value = (before ? before + ' ' : '') + said;
+      text.dispatchEvent(new Event('input'));
+      if (e.results[e.results.length - 1].isFinal) hint('Got it. Check it, then add it.');
+    };
+    try { rec.start(); } catch (err) { hint("Couldn't start the mic. Use the keyboard's mic instead.", true); }
+  };
+
+  // ---- Shared from another app (Android share sheet → Briefing) ----
+  (function takeShare() {
+    const q = new URLSearchParams(location.search);
+    const shared = [q.get('title'), q.get('text'), q.get('url')].filter(Boolean).join(' — ');
+    if (!shared) return;
+    text.value = shared; text.dispatchEvent(new Event('input'));
+    setMode('explore');
+    hint('Shared in. It’s set to Look into; pick another type if you like.');
+    history.replaceState(null, '', location.pathname);
+  })();
+
+  $('copyFeed').onclick = () => {
+    const url = API + '?k=' + encodeURIComponent(KEY || '') + '&feed=1';
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+      .then(() => toast('Feed link copied. Keep it private.'), () => toast("Couldn't copy it on this phone."));
+  };
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+  if (mode === 'auto') setMode('auto');
+  if (!KEY) {
+    $('app').hidden = true;
+    $('setup').hidden = false;
+  } else {
+    refresh();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { greet(); refresh(); } });
+  }
+</script>
+</body>
+</html>
