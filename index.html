@@ -123,6 +123,7 @@
     li.item.m-explore .ico { background: var(--sky-soft); color: var(--sky); }
     li.item.m-feedback .ico { background: var(--berry-soft); color: var(--berry); }
     li.item.m-location .ico { background: var(--sky-soft); color: var(--sky); }
+    li.item.m-work .ico { background: var(--cocoa); color: #FBEFC8; }
     li.item.m-due .ico, li.item.m-remind .ico { background: var(--sun-soft); color: var(--sun-deep); }
     li.item.leaving { opacity: 0; transform: translateX(24px); }
     li.item.checked .title { text-decoration: line-through; color: var(--muted); }
@@ -167,6 +168,7 @@
     <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></g></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></g></symbol>
     <symbol id="i-chat" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 5.5h15v10h-8l-4.5 3.5v-3.5h-2.5z"/></g></symbol>
+    <symbol id="i-work" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5M3.5 12.5h17"/></g></symbol>
     <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z" fill="currentColor"/></symbol>
   </defs>
 </svg>
@@ -205,6 +207,7 @@
       <textarea id="text" rows="3" placeholder="Car registration is due Dec 3…" enterkeyhint="done"></textarea>
       <div class="modes" id="modes" role="group" aria-label="When it should come up">
         <button class="chip" data-mode="auto" aria-pressed="true" type="button"><svg><use href="#i-spark"/></svg>Auto</button>
+        <button class="chip" data-mode="work" aria-pressed="false" type="button"><svg><use href="#i-work"/></svg>Work</button>
         <button class="chip" data-mode="next" aria-pressed="false" type="button"><svg><use href="#i-sun"/></svg>Next show</button>
         <button class="chip" data-mode="remind" aria-pressed="false" type="button"><svg><use href="#i-bell"/></svg>Remind me</button>
         <button class="chip" data-mode="due" aria-pressed="false" type="button"><svg><use href="#i-cal"/></svg>Due date</button>
@@ -368,6 +371,7 @@
   // ---- Items ----
   const MODE = {
     next:     { icon: 'i-sun',    meta: () => 'Next show' },
+    work:     { icon: 'i-work',   meta: (it) => it.date ? 'Work · due ' + it.date + ' · in Work desk until done' : 'Work · next weekday show' },
     remind:   { icon: 'i-bell',   meta: (it) => 'Reminder · ' + it.date },
     due:      { icon: 'i-cal',    meta: (it) => 'Due ' + it.date + ' · in “coming up” until done' },
     explore:  { icon: 'i-search', meta: () => 'Look into · researched for the next show' },
@@ -431,6 +435,7 @@
   // ---- Composer ----
   const HINTS = {
     auto: 'Auto: just say it. Claude works out when it should come up.',
+    work: 'Its own Work desk segment, apart from your personal stuff, on the next weekday show. Add a date to count down a deadline. Never used for web searches.',
     next: 'Mentioned on the next show, then cleared.',
     remind: 'Mentioned on the day you pick, then cleared.',
     due: 'In “coming up” for the week before, until you clear it.',
@@ -439,7 +444,7 @@
     feedback: 'A standing request about the show itself (“less news”, “stop mentioning the dentist”). Applies every episode until removed.',
   };
   const PLACEHOLDER = {
-    auto: 'Car registration is due Dec 3…', next: 'Mention that the plumber comes Thursday…', remind: 'Bring the forms…',
+    auto: 'Car registration is due Dec 3…', work: 'Send the Smartsheet rollout update to my managers…', next: 'Mention that the plumber comes Thursday…', remind: 'Bring the forms…',
     due: 'Renew passport…', explore: 'That book Marcus mentioned, Thinking in Systems…', location: 'Chicago, Illinois',
     feedback: 'Less news on Mondays…',
   };
@@ -449,8 +454,8 @@
   function setMode(m) {
     mode = m;
     document.querySelectorAll('#modes .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.mode === m)));
-    $('dateRow').hidden = !(m === 'remind' || m === 'due' || m === 'location');
-    $('dateLabel').textContent = dateInput.value ? prettyDate(dateInput.value) : (m === 'location' ? 'Last day there' : 'Pick a date');
+    $('dateRow').hidden = !(m === 'remind' || m === 'due' || m === 'location' || m === 'work');
+    $('dateLabel').textContent = dateInput.value ? prettyDate(dateInput.value) : (m === 'location' ? 'Last day there' : m === 'work' ? 'Deadline (optional)' : 'Pick a date');
     $('hint').textContent = HINTS[m]; $('hint').classList.remove('err');
     text.placeholder = PLACEHOLDER[m];
   }
@@ -466,12 +471,12 @@
     const btn = $('add');
     btn.disabled = true; $('addLabel').textContent = mode === 'auto' ? 'Figuring it out…' : 'Adding…';
     const params = { action: 'add', text: value, mode };
-    if (dateInput.value && (mode === 'remind' || mode === 'due' || mode === 'location')) params.date = dateInput.value;
+    if (dateInput.value && (mode === 'remind' || mode === 'due' || mode === 'location' || mode === 'work')) params.date = dateInput.value;
     api(params).then((r) => {
       text.value = ''; text.style.height = ''; dateInput.value = ''; setMode('auto');
       buzz([10, 40, 10]);
       const a = r.added || {};
-      const where = a.mode === 'explore' ? 'Look into, next show' : a.mode === 'feedback' ? 'Show feedback' :
+      const where = a.mode === 'work' ? (a.date ? 'Work, due ' + prettyDate(a.date) : 'Work, next weekday show') : a.mode === 'explore' ? 'Look into, next show' : a.mode === 'feedback' ? 'Show feedback' :
         a.mode === 'location' ? (a.date ? 'Away until ' + prettyDate(a.date) : 'Away, next show') :
         a.mode === 'remind' ? 'Reminder ' + prettyDate(a.date) : a.mode === 'due' ? 'Due ' + prettyDate(a.date) : 'Next show';
       toast('Added: ' + (a.title || value) + ' (' + where + ')', null, null, 3400);
